@@ -8,10 +8,10 @@ android {
 
     defaultConfig {
         applicationId "com.fansan.filemodifytime"
-        minSdk 21
+        minSdk 29
         targetSdk 31
         versionCode 1
-        versionName "1.0"
+        versionName "alpha_0.1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

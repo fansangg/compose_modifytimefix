@@ -1,18 +1,18 @@
 package com.fansan.filemodifytime
 
+import android.media.ExifInterface
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.Path
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.blankj.utilcode.util.FileUtils
+import com.blankj.utilcode.util.LogUtils
 import com.blankj.utilcode.util.PathUtils
+import com.blankj.utilcode.util.TimeUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
@@ -31,7 +31,29 @@ class MainViewModel : ViewModel() {
     val historyPath = mutableListOf<String>()
     var selectedPath = ""
     var parentPosition = mutableMapOf<String,IndexBean>()
+    var testKey by mutableStateOf("0")
+    var analysis by mutableStateOf(false)
+    var jumpCount by mutableStateOf(0)
+    var errorCount by mutableStateOf(0)
+    var noMatchCount by mutableStateOf(0)
+    var matchCount by mutableStateOf(0)
+    var noMatchFiles = mutableListOf<File>()
+    var fixing by mutableStateOf(false)
+    var done by mutableStateOf(false)
+    var successCount = 0
+    var failedCount = 0
+    var currentFileIndex = 0
+    var selectedDirCount = 0
 
+    fun updataTest():Flow<MutableList<String>> {
+        return flow {
+            val list = mutableListOf<String>()
+            for (i in 0..50){
+                  list.add((0..100).random().toString())
+            }
+            emit(list)
+        }
+    }
 
     fun updataDirs(): Flow<MutableList<FileItem>> {
         return flow {
@@ -65,5 +87,62 @@ class MainViewModel : ViewModel() {
             .catch {
                 emit(mutableListOf())
             }
+    }
+
+    fun analysisFile(){
+        viewModelScope.launch(Dispatchers.IO){
+            val list = FileUtils.listFilesInDir(selectedPath)
+            selectedDirCount = list.size
+            analysis = true
+            list.forEachIndexed { index, file ->
+                currentFileIndex = index+1
+                if (file.isDirectory){
+                    jumpCount++
+                    return@forEachIndexed
+                }
+
+                val exifInterface = ExifInterface(file)
+                val dataTime = exifInterface.getAttribute(ExifInterface.TAG_DATETIME)
+                if (dataTime == null) {
+                    LogUtils.d("fansangg","error == ${file.path} -- time = ${TimeUtils.millis2String(file.lastModified())}")
+                    errorCount++
+                    return@forEachIndexed
+                }
+                val exifMillis =
+                    TimeUtils.string2Millis(dataTime, "yyyy:MM:dd HH:mm:ss")
+                if (exifMillis != file.lastModified()){
+                    noMatchCount++
+                    noMatchFiles.add(file)
+                    return@forEachIndexed
+                }
+                matchCount++
+            }
+            analysis = false
+        }
+    }
+
+    fun fixFiles(){
+        viewModelScope.launch(Dispatchers.IO){
+            fixing = true
+            noMatchFiles.forEach {
+                val exifInterface = ExifInterface(it)
+                val dataTime = exifInterface.getAttribute(ExifInterface.TAG_DATETIME)
+                val exifMillis =
+                    TimeUtils.string2Millis(dataTime, "yyyy:MM:dd HH:mm:ss")
+                val result = it.setLastModified(exifMillis)
+                if (result) successCount++ else failedCount++
+            }
+            fixing = false
+            jumpCount = 0
+            errorCount = 0
+            noMatchCount = 0
+            currentFileIndex = 0
+            matchCount = 0
+            selectedPath = ""
+            selectedDirCount = 0
+            noMatchFiles.clear()
+            done = true
+        }
+
     }
 }
