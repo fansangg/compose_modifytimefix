@@ -1,9 +1,10 @@
 package com.fansan.filemodifytime
 
-import android.media.ExifInterface
+import android.annotation.SuppressLint
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.exifinterface.media.ExifInterface
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.blankj.utilcode.util.FileUtils
@@ -44,6 +45,8 @@ class MainViewModel : ViewModel() {
     var failedCount = 0
     var currentFileIndex = 0
     var selectedDirCount = 0
+    var jumpFiles = mutableListOf<File>()
+    var errorFiles = mutableListOf<File>()
 
     fun updataTest():Flow<MutableList<String>> {
         return flow {
@@ -97,6 +100,7 @@ class MainViewModel : ViewModel() {
             list.forEachIndexed { index, file ->
                 currentFileIndex = index+1
                 if (file.isDirectory){
+                    jumpFiles.add(file)
                     jumpCount++
                     return@forEachIndexed
                 }
@@ -104,8 +108,8 @@ class MainViewModel : ViewModel() {
                 val exifInterface = ExifInterface(file)
                 val dataTime = exifInterface.getAttribute(ExifInterface.TAG_DATETIME)
                 if (dataTime == null) {
-                    LogUtils.d("fansangg","error == ${file.path} -- time = ${TimeUtils.millis2String(file.lastModified())}")
                     errorCount++
+                    errorFiles.add(file)
                     return@forEachIndexed
                 }
                 val exifMillis =
@@ -144,5 +148,14 @@ class MainViewModel : ViewModel() {
             done = true
         }
 
+    }
+
+    fun infomation(){
+        viewModelScope.launch(Dispatchers.IO){
+            errorFiles.forEach {
+                val exifInterface = ExifInterface(it)
+                LogUtils.d("fansangg","${it.path} -- ${exifInterface.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL)} -- ${exifInterface.getAttribute(ExifInterface.TAG_DATETIME_DIGITIZED)} -- ${exifInterface.getAttribute(ExifInterface.TAG_DATETIME)}")
+            }
+        }
     }
 }

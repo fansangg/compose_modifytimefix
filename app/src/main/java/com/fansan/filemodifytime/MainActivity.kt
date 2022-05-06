@@ -32,7 +32,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.blankj.utilcode.util.ConvertUtils
 import com.blankj.utilcode.util.PathUtils
+import com.blankj.utilcode.util.SnackbarUtils
 import com.fansan.filemodifytime.ui.theme.FileModifyTimeTheme
 import com.hjq.permissions.OnPermissionCallback
 import com.hjq.permissions.Permission
@@ -230,7 +232,9 @@ fun ControlPage() {
             fontSize = 16.sp,
             color = Color(0xffff0000),
             textDecoration = TextDecoration.LineThrough,
-            modifier = Modifier.padding(top = 10.dp, bottom = 10.dp)
+            modifier = Modifier.padding(top = 10.dp, bottom = 10.dp).clickable {
+                mainViewModel.infomation()
+            }
         )
 
         if (!mainViewModel.analysis && mainViewModel.noMatchCount > 0)
